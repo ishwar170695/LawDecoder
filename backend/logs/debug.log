@@ -1,0 +1,28 @@
+[2025-07-31T08:22:28.995Z] ✅ Loaded 11392 law vectors
+[2025-07-31T08:22:31.133Z] 📥 Incoming Query: "someone built his house on my land"
+[2025-07-31T08:22:31.134Z] 🔧 Generating embedding...
+[2025-07-31T08:22:31.159Z] 🔍 Computing cosine similarities...
+[2025-07-31T08:22:31.566Z] 📜 Top 5 Sections:
+The BHARATIYA NYAYA Sanhita, 2023 | 319. Cheating by personation. | Score: 0.4297
+The Berar Laws Act, 1941 | 2. He was entitled to a right of way from the [house] over a certain field to a public highway and | Score: 0.4126
+The BHARATIYA NAGARIK SURAKSHA Sanhita, 2023 | 325 The owner of the animal. | Score: 0.3974
+The BHARATIYA NAGARIK SURAKSHA Sanhita, 2023 | 333 House-trespass, having | Score: 0.3946
+The REGISTRATION Act, 1908 | 22. Description of houses and land by reference to Government maps or surveys. | Score: 0.3929
+[2025-07-31T08:22:31.568Z] 📝 Context prepared (1716 chars)
+[2025-07-31T08:22:31.569Z] 🤖 Sending request to OpenRouter: qwen/qwen3-235b-a22b:free
+[2025-07-31T08:22:33.088Z] 📩 Raw OpenRouter response: {
+  "error": {
+    "message": "Rate limit exceeded: free-models-per-day. Add 10 credits to unlock 1000 free model requests per day",
+    "code": 429,
+    "metadata": {
+      "headers": {
+        "X-RateLimit-Limit": "50",
+        "X-RateLimit-Remaining": "0",
+        "X-RateLimit-Reset": "1754006400000"
+      },
+      "provider_name": null
+    }
+  },
+  "user_id": "user_307vTCZwKKH2PjT6dewD0PQZbkc"
+}...
+[2025-07-31T08:22:33.090Z] ✅ Cleaned LLM Output: ...

@@ -1,0 +1,26 @@
+{
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "node-fetch": "^2.7.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  },
+  "name": "lawdecoder-backend",
+  "version": "1.0.0",
+  "description": "Backend for LawDecoder application",
+  "main": "server.js",
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "scripts": {
+  "start": "node server.js"
+}
+
+}
