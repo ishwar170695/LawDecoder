@@ -1,7 +1,3 @@
-Here’s a **clean and contributor-friendly README.md** tailored for the **public LawDecoder repo**:
-
----
-
 # ⚖️ LawDecoder
 
 **LawDecoder** is an AI-powered legal explainer for **Indian law**, built using **RAG (Retrieval-Augmented Generation)**.
@@ -145,7 +141,3 @@ PRs welcome!
 ## 📜 License
 
 MIT License.
-
----
-
-Would you also like me to **add quick "Deploy on Render" instructions** (1-click backend hosting) for contributors who want to test it online?
