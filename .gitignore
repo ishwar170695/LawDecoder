@@ -45,3 +45,4 @@ frontend/.streamlit/
 *.pdf
 
 .github/
+log.txt
