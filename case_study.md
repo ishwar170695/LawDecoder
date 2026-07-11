@@ -1,5 +1,5 @@
 ---
-title: I Rebuilt My AI Legal Assistant After Learning Why Dense Vector Search (RAG) Wasn't Enough
+title: I Rebuilt My AI Legal Assistant After Learning Why Vector-Only RAG Wasn't Enough
 published: true
 description: Why naive dense vector search fails on domain-specific legal data, and how to build a hybrid search engine using SQLite FTS5, RRF, and a domain reranker.
 tags: ai, backend, sqlite, search
@@ -54,7 +54,7 @@ The embedding model wasn't "wrong." It was doing exactly what it was trained to 
 
 Unfortunately, in legal search, *semantically similar* isn't the same as *legally relevant*.
 
-Because "forgery" and "counterfeit" ended up close in embedding space, the retriever ranked counterfeit coin and government stamp provisions above the actual definition of document forgery. The model generalised too aggressively. It missed the specific statutory definition of forgery (`BNS Section 336`) because the word "signature" was semantically distant from generic statutory descriptions of the offence.
+Because "forgery" and "counterfeit" ended up close in embedding space, the retriever ranked counterfeit coin and government stamp provisions above the actual definition of document forgery. The retriever generalized too aggressively. It missed the specific statutory definition of forgery (`BNS Section 336`) because the word "signature" was semantically distant from generic statutory descriptions of the offence.
 
 ### The Secondary Issues: RAM Bloat & Duplicates
 In addition to generalising incorrectly, caching large raw text strings (text, titles, act names) in a JavaScript array caused the Node.js process to consume over **320 MB of RAM** at startup. Furthermore, since legal codes are highly repetitive, the search regularly returned duplicate entries of identical sections across different personal laws, cluttering the LLM's context window.
@@ -106,7 +106,7 @@ const mergedRanking = Array.from(rrfScores.entries())
 ```
 
 ### Step 4: Domain Reranker (Deterministic Guardrail)
-To resolve the counterfeit coin noise without running a heavy, slow transformer cross-encoder, I built a lightweight, deterministic **Domain Reranker** in JavaScript. 
+To resolve the counterfeit coin noise without running a heavy, slow transformer cross-encoder, I built a lightweight, deterministic **Domain Reranker** in JavaScript. This is a deterministic rule-based reranker tailored to the legal domain—not a learned neural cross-encoder. 
 
 It loads the top 20 candidates returned by the RRF step and checks for specific intent signals:
 *   If the query is document/signature forgery-related, it checks if a retrieved document is a coin or banknote counterfeit section. If yes, it **penalizes the score by 99%** (`* 0.01`).
@@ -142,7 +142,7 @@ To evaluate the redesign, I assembled a benchmark of 100 manually verified legal
 | **Avg. Query Latency** | `466 ms` | `12 ms` | **97.4% speedup** |
 | **Memory Cache Footprint** | `~320 MB` | `~48 MB` | **85.0% RAM savings** |
 | **Duplicate Citations** | Present (up to 40% overlaps) | Deduplicated (0% overlaps) | Verified |
-| **Top-5 Retrieval Success** | ~68% | ~91% | **+23% accuracy gain** |
+| **Top-5 Relevant Retrieval Rate** | ~68% | ~91% | **+23% accuracy gain** |
 
 *Latency is based on 100 benchmark queries. Memory is process-level heap size at startup. Accuracy is evaluated on top-5 target matches using a manually verified benchmark dataset of 100 queries.*
 
