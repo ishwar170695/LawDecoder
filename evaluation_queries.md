@@ -8,9 +8,13 @@ The evaluation dataset was constructed to test specific retrieval failure points
 
 ## 📊 Evaluation Summary (Top-5 Accuracy)
 
-*   **v1 (Dense-Only Vector Scan):** **68%** Top-5 Accuracy
-*   **v2.1 (Hybrid SQL FTS5 + Dense Vector + RRF + Domain Reranker):** **91%** Top-5 Accuracy
-*   **Net Accuracy Gain:** **+23%** precision improvement across the 100-query benchmark.
+Controlled Component Ablation (10 Representative Queries via `npm run benchmark`):
+* **Stage 1: Dense Vector Only:** **60%** (6/10)
+* **Stage 2: SQLite FTS5 (BM25) Only:** **70%** (7/10)
+* **Stage 3: Hybrid Search (RRF):** **90%** (9/10)
+* **Stage 4: Full Pipeline (+ Domain Reranker):** **90%** (9/10)
+
+*(Note: The domain reranker acts as a deterministic guardrail for statutory ambiguities like signature forgery vs. counterfeit currency without altering the aggregate 10-query hit rate.)*
 
 ---
 
