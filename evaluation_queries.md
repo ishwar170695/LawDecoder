@@ -20,7 +20,7 @@ The evaluation dataset was constructed to test specific retrieval failure points
 *   **Domain:** Criminal Law / Document Forgery
 *   **Expected Target Sections:** BNS Section 336 (Forgery), BNS Section 340 (Forged document), Bharatiya Sakshya Adhiniyam Section 65 (Proof of signature).
 *   **v1 Retrieval Result:** ❌ **Incorrect / Miss** (Retrieved counterfeit coin/stamp laws: BNS Section 180 and BNS Section 179).
-*   **v2.1 Retrieval Result:**  **Correct / Hit** (Retrieved BNS Section 340, BNS Section 336, BNS Section 339, BNS Section 335, Evidence Act Section 65).
+*   **v2.1 Retrieval Result:**  **Correct / Hit** (Retrieved BNS Section 340, BNS Section 336, BNS Section 339, BNS Section 335, Bharatiya Sakshya Adhiniyam, 2023 Section 65).
 
 ### 2. Query: "What happens after police registers an FIR?"
 *   **Domain:** Criminal Procedure

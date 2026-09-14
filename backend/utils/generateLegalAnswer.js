@@ -67,17 +67,28 @@ if (!fs.existsSync(VECTORS_PATH)) {
   process.exit(1);
 }
 
-console.log('Loading law vectors cache...');
-const dbStart = Date.now();
-const allVectorsRaw = JSON.parse(fs.readFileSync(VECTORS_PATH, 'utf-8'));
-console.log(`Loaded ${allVectorsRaw.length} vectors in ${Date.now() - dbStart}ms. Preprocessing embeddings...`);
+function loadVectorCache() {
+  console.log('Loading law vectors cache...');
+  const dbStart = Date.now();
+  const raw = JSON.parse(fs.readFileSync(VECTORS_PATH, 'utf-8'));
+  console.log(`Loaded ${raw.length} vector nodes in ${Date.now() - dbStart}ms. Preprocessing embeddings...`);
 
-const prepStart = Date.now();
-const allVectors = allVectorsRaw.map(entry => ({
-  id: entry.id,
-  embedding: toFloat32Array(entry.embedding)
-}));
-console.log(`Preprocessed embeddings cache in ${Date.now() - prepStart}ms. Memory optimized (metadata discarded from RAM).`);
+  const prepStart = Date.now();
+  const uniqueMap = new Map();
+  for (const entry of raw) {
+    if (!uniqueMap.has(entry.id)) {
+      uniqueMap.set(entry.id, {
+        id: entry.id,
+        embedding: toFloat32Array(entry.embedding)
+      });
+    }
+  }
+  const vectors = Array.from(uniqueMap.values());
+  console.log(`Preprocessed ${vectors.length} unique embeddings in ${Date.now() - prepStart}ms. Memory optimized (metadata discarded from RAM).`);
+  return vectors;
+}
+
+const allVectors = loadVectorCache();
 
 // Map for quick vector lookup in memory
 const vectorMap = new Map();
@@ -293,7 +304,7 @@ async function generateLegalAnswer(userQuery, topK = 5) {
   const hydrated = [];
 
   const queryLower = userQuery.toLowerCase();
-  const isDocumentForgeryRelated = queryLower.includes('signature') || queryLower.includes('sign') || queryLower.includes('document');
+  const isDocumentForgeryRelated = /\b(signature|signatures|sign|signed|signing|document|documents)\b/i.test(userQuery);
 
   for (const [id, rrfScore] of mergedRanking) {
     const row = selectStmt.get(id);
@@ -321,14 +332,12 @@ async function generateLegalAnswer(userQuery, topK = 5) {
       // If document/signature forgery is queried, penalize counterfeit coins/stamps/currency notes
       if (isDocumentForgeryRelated) {
         const isCoinOrStampOrCurrency = 
-          titleLower.includes('coin') || titleLower.includes('stamp') || 
-          titleLower.includes('currency') || titleLower.includes('bank-note') ||
-          contentLower.includes('coin') || contentLower.includes('stamp') || 
-          contentLower.includes('currency-note');
+          /\b(coin|coins|stamp|stamps|currency|bank-note|banknotes)\b/i.test(titleLower) ||
+          /\b(coin|coins|stamp|stamps|currency|currency-note)\b/i.test(contentLower);
 
         if (isCoinOrStampOrCurrency) {
           adjustedScore *= 0.01; // heavily penalize counterfeit coin/stamps (reduce by 99%)
-        } else if (titleLower.includes('forgery') || titleLower.includes('forged')) {
+        } else if (/\b(forgery|forged)\b/i.test(titleLower)) {
           adjustedScore *= 3.0; // strong boost for direct forgery definitions/offences
         }
       }
