@@ -49,7 +49,7 @@ Most hobbyist RAG projects implement a standard pipeline: convert query to vecto
 
 LawDecoder is built as a lightweight, performance-tuned decoupled application with a **Node.js (Express) Backend** and a **Streamlit (Python) Frontend**.
 
-![LawDecoder Architecture](images/architecture.png)
+![LawDecoder Architecture](images/diagram_pipeline.png)
 
 ---
 
