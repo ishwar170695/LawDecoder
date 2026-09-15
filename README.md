@@ -30,14 +30,14 @@ To see the difference, consider the query: *"Someone forged my signature"*
         *   ✓ `BNS Section 336`: Offence of forgery and its punishment
         *   ✓ `BNS Section 339`: Possession of forged document
         *   ✓ `BNS Section 335`: Making a false document
-        *   ✓ `Evidence Act Section 65`: Proof of signature and handwriting
+        *   ✓ `Bharatiya Sakshya Adhiniyam, 2023 Section 65`: Proof of signature and handwriting
     *   **LLM Explanation:** Empathy-driven summary structured under clear subheadings detailing offence implications, penalties, evidence to collect, and legal safeguards.
 
 ---
 
 ## 🧠 Why LawDecoder? (Why Dense-Only Retrieval Fails)
 
-Most hobbyist RAG projects implement a standard pipeline: convert query to vector $\rightarrow$ query a vector DB $\rightarrow$ feed top $k$ chunks to an LLM. While appropriate for generic tasks, this approach fails in domain-specific areas like legal research for three major reasons:
+Most hobbyist RAG projects implement a standard pipeline: convert query to vector → query a vector DB → feed top k chunks to an LLM. While appropriate for generic tasks, this approach fails in domain-specific areas like legal research for three major reasons:
 
 1.  **Semantic Generalization Mismatch:** Vector embeddings capture general meaning but fail to index exact terms. For example, if a user queries *"Someone forged my signature"*, semantic search retrieves counterfeit coin or Government stamp laws (`BNS Section 180`) due to proximity to the concept of "counterfeiting/forging." It misses the direct definition of forgery (`BNS Section 336`) because the word "signature" is semantically far from generic legal texts.
 2.  **Duplicate Citations:** Legal codes are highly repetitive. A single query about judicial separation retrieves Section 10 of the Hindu Marriage Act, Section 23 of the Special Marriage Act, and Section 34 of the Parsi Marriage Act—all saying the exact same thing. This duplicate noise clutters the LLM context window, exhausting limits and degrading response quality.
@@ -61,7 +61,7 @@ To address RAG retrieval challenges, LawDecoder implements:
 All 4,892 legal sections (BNS, BNSS, IT Act, Constitution, Parsi/Hindu/Muslim personal laws) are persisted in a local **SQLite** database. A virtual **FTS5 index** handles exact-match keyword indexing (BM25 ranking), ensuring precise matches for terms like *"Section 65"*, *"forgery"*, or *"signature"*.
 
 ### 2. Lightweight Vector Memory Cache
-To optimize memory, only the `id` and `Float32Array` embedding arrays are cached in memory (metadata is discarded). Full text and headers are hydrated from SQLite on-demand, reducing memory usage by **85%**.
+To optimize memory, only the document IDs and compact 384-dimension `Float32Array` embedding buffers (~7.17 MB) are kept in RAM. Full text and headers are hydrated from SQLite on demand, reducing active JavaScript heap usage from **~438 MB to ~16 MB (~96% reduction)** and process resident memory (RSS) from **~507 MB to ~218 MB (~57% reduction)**.
 
 ### 3. Reciprocal Rank Fusion (RRF)
 Results from keyword search (sparse index) and semantic search (dense embeddings) are merged using [Reciprocal Rank Fusion (RRF)](https://dl.acm.org/doi/10.1145/1571941.1572114), which rewards documents ranked highly by both retrieval methods.
@@ -71,22 +71,33 @@ Acts as a lightweight cross-encoder alternative. It evaluates the top 20 fused c
 *   If the query is document/signature forgery-related, it **penalizes coin/stamp counterfeit sections** by 99% (`* 0.01`).
 *   It **boosts direct document forgery definition and penalty sections** by 300% (`* 3.0`).
 *   Deduplicates matches dynamically based on act name and content snippet.
+*   *Note: In controlled ablation, the domain reranker acts as a targeted guardrail for specific statutory ambiguities (demoting counterfeit-currency false positives on signature queries) without altering aggregate recall across the wider test set.*
 
 ---
 
 ## 📊 Performance & Evaluation Dashboard
 
-Evaluated against a manually verified benchmark dataset of 100 queries:
+Evaluated on a controlled 10-query representative domain benchmark across 4,892 statutory sections (run via `npm run benchmark` on an AMD Ryzen 5 5600H, Node.js v22.x, `better-sqlite3` v12.11 in WAL mode):
 
-| Metric | v1 (Naive Vector RAG) | v2.1 (Hybrid Search - Current) | Change |
+| Metric | v1 (Naive Linear Scan) | v2.1 (Hybrid Search - Current) | Impact |
 | :--- | :--- | :--- | :--- |
-| **Search Engine** | Dense Vector (Linear JSON scan) | Hybrid (SQLite FTS5 + Dense Vector + RRF + Reranker) | Major retrieval precision upgrade |
-| **Avg. Query Latency** | `466 ms` | `12 ms` | **97.4% speedup** |
-| **Memory Cache Footprint** | `~320 MB` | `~48 MB` | **85.0% RAM savings** |
-| **Duplicate Citations** | Present (up to 40% overlaps) | Deduplicated (0% overlaps) | Verified |
-| **Top-5 Retrieval Accuracy** | ~68% | ~91% | **+23% accuracy gain** |
+| **Search Engine** | Dense Vector (Linear JSON scan) | SQLite FTS5 + Dense Vector + RRF + Reranker | Hybrid precision upgrade |
+| **Query Latency (Median)** | `~161 ms` | `~7.8 ms` | **~20× lower measured latency** |
+| **Active JavaScript Heap** | `~438 MB` (JSON Object Tree) | `~16 MB` | **~96% active heap reduction** |
+| **Process Resident Memory (RSS)** | `~507 MB RSS` | `~218 MB RSS` | **~57% process RSS reduction** |
+| **Raw Vector Storage (RAM)** | N/A | `7.17 MB` | Compact Float32Array cache |
+| **Top-5 Hit Rate (10Q Set)** | 60% (Dense only) | 90% (Hybrid / Full Pipeline) | **+30 percentage points** |
 
-*Latency is based on 100 benchmark queries. Memory is process-level heap size at startup. Accuracy is evaluated on top-5 target matches using a manually verified benchmark dataset of 100 queries (see the sample benchmark list in [evaluation_queries.md](evaluation_queries.md)).*
+*Note: The latency reduction is primarily driven by replacing per-query object traversals and JSON allocations with contiguous `Float32Array` numeric loops and compiled SQLite FTS5 in C. RSS includes the Node.js runtime, native buffers, and ONNX runtime shared libraries. Accuracy was measured on a representative 10-query domain evaluation set spanning criminal law, procedure, cyber crime, family law, evidence, and consumer protection (see [evaluation_queries.md](evaluation_queries.md)).*
+
+### Component Ablation (10-Query Benchmark)
+
+| Retrieval Configuration | Top-5 Hit Rate | Key Behavior Observed |
+| :--- | :--- | :--- |
+| **Stage 1: Dense Vector Only** | 60% (6/10) | Good broad semantic coverage; confused document forgery with currency counterfeiting. |
+| **Stage 2: SQLite FTS5 Only** | 70% (7/10) | Strong on exact terms and section citations; missed colloquial layman phrasing. |
+| **Stage 3: Hybrid Search (RRF)** | 90% (9/10) | High recall; combines exact statutory terminology with colloquial layman phrasing. |
+| **Stage 4: Full Pipeline (+ Domain Reranker)** | 90% (9/10) | Maintains 90% recall while cleanly prioritizing document forgery statutes over counterfeit coin laws for signature queries. |
 
 ---
 
@@ -145,7 +156,13 @@ OPENROUTER_API_KEY1=your_openrouter_key
 ```bash
 node server.js
 ```
-The server will automatically detect and compile the SQLite database from your raw data in `backend/data/parsed/` on the first boot.
+The server will automatically detect and compile the SQLite database (`backend/data/laws.db`) and vector representations from your raw data in `backend/data/` on the first boot.
+
+**Run benchmark harness locally:**
+```bash
+npm run benchmark
+```
+*(Note: Running the benchmark harness tests latency, memory allocations, and component ablation across the 10 representative benchmark queries. It requires `backend/data/laws.db` and `backend/data/parsed_laws_vectors.json`, which are generated when the backend initializes on first boot).*
 
 ### 3️⃣ Frontend (Streamlit UI)
 **Install dependencies:**

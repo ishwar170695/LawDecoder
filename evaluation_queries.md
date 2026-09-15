@@ -1,20 +1,36 @@
-# LawDecoder Evaluation Benchmark: Sample Queries
+# LawDecoder Evaluation Benchmark: Representative Domain Queries
 
-This document contains a representative sample of **10 manually verified benchmark queries** from the 100-query evaluation dataset used to test the LawDecoder v2.1 retrieval pipeline. 
+This document details the **10 representative domain evaluation queries** used to benchmark and ablate the LawDecoder retrieval pipeline (reproducible locally via `cd backend && npm run benchmark`).
 
-The evaluation dataset was constructed to test specific retrieval failure points: semantic generalization in dense models, duplicate sections in overlapping statutory codes, and spelling/keyword precision.
+The queries specifically stress-test core retrieval failure modes: semantic generalization in dense vector models, statutory overlap across parallel legal codes (e.g. personal laws), and keyword precision for specific legal terms. While a 10-query set is an indicative domain benchmark rather than a statistically settled aggregate, it spans key practice areas: Criminal Law, Criminal Procedure, Cyber Crime, Family Law, Evidence Law, and Consumer Protection.
 
 ---
 
-## 📊 Evaluation Summary (Top-5 Accuracy)
+## 📊 Evaluation Summary & Component Ablation
 
-Controlled Component Ablation (10 Representative Queries via `npm run benchmark`):
-* **Stage 1: Dense Vector Only:** **60%** (6/10)
-* **Stage 2: SQLite FTS5 (BM25) Only:** **70%** (7/10)
-* **Stage 3: Hybrid Search (RRF):** **90%** (9/10)
-* **Stage 4: Full Pipeline (+ Domain Reranker):** **90%** (9/10)
+Evaluated across 4,892 statutory sections on an AMD Ryzen 5 5600H running Node.js v22.x and `better-sqlite3` v12.11 in WAL mode:
 
-*(Note: The domain reranker acts as a deterministic guardrail for statutory ambiguities like signature forgery vs. counterfeit currency without altering the aggregate 10-query hit rate.)*
+### Comparative Performance (v1 vs v2.1)
+
+| Metric | v1 (Naive Linear Scan) | v2.1 (Hybrid Search - Current) | Impact |
+| :--- | :--- | :--- | :--- |
+| **Search Engine** | Dense Vector (Linear JSON scan) | SQLite FTS5 + Dense Vector + RRF + Guardrail | Hybrid precision upgrade |
+| **Query Latency (Median)** | `~161 ms` | `~7.8 ms` | **~20× lower measured latency** |
+| **Active JavaScript Heap** | `~438 MB` (JSON Object Tree) | `~16 MB` | **~96% active heap reduction** |
+| **Process Resident Memory (RSS)** | `~507 MB RSS` | `~218 MB RSS` | **~57% process RSS reduction** |
+| **Raw Vector Storage (RAM)** | N/A | `7.17 MB` | Compact Float32Array cache |
+| **Top-5 Hit Rate (10Q Set)** | 60% (Dense only) | 90% (Hybrid / Full Pipeline) | **+30 percentage points** |
+
+### 4-Stage Component Ablation
+
+| Stage | Configuration | Top-5 Hit Rate | Key Behavior Observed |
+| :--- | :--- | :--- | :--- |
+| **Stage 1** | Dense Vector Only (`all-MiniLM-L6-v2`) | **60%** (6/10) | Good semantic coverage; confused document forgery with currency counterfeiting. |
+| **Stage 2** | SQLite FTS5 Only (BM25 keyword search) | **70%** (7/10) | Strong on exact terms and section citations; missed colloquial layman phrasing. |
+| **Stage 3** | Hybrid Search (Dense + FTS5 via RRF) | **90%** (9/10) | High recall; merges exact legal nomenclature with colloquial intent. |
+| **Stage 4** | Full Pipeline (+ Domain Reranker) | **90%** (9/10) | Maintains 90% recall while cleanly prioritizing document forgery over counterfeit coins for signature queries. |
+
+*(Note: The domain reranker acts as a deterministic domain guardrail for specific statutory ambiguities like signature forgery vs. counterfeit currency without altering the aggregate 10-query hit rate).*
 
 ---
 

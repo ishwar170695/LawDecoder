@@ -191,23 +191,24 @@ with tab_dev:
     Many hobby projects use a vector-only search (dense embeddings) over flat JSON chunks. While this works well for generic semantic matches, it falls apart in domain-specific tasks (like legal search) where exact keywords (e.g. *"Section 167"* or *"forgery"*) carry precise legal definitions.
     
     To solve this, LawDecoder was restructured in **v2** into a hybrid pipeline:
-    1. **Structured Persistence (SQLite):** All 4,892 legal sections are stored on disk in SQLite, reducing the memory cache overhead by ~85%.
-    2. **FTS5 Keyword Search (BM25):** Precise terms are queried using a sparse keyword index.
+    1. **Structured Persistence (SQLite):** All 4,892 legal sections are stored on disk in SQLite, keeping the active heap down to ~16 MB and using compact 384-dimension Float32Array vectors (~7.17 MB).
+    2. **FTS5 Keyword Search (BM25):** Precise terms are queried using a compiled sparse keyword index in SQLite.
     3. **RRF Score Fusion:** Merges semantic rankings (dense) and keyword rankings (sparse BM25) using standard Reciprocal Rank Fusion.
-    4. **Heuristic Rerank Filter:** Runs legal intent rules (e.g. demoting counterfeit coins/stamps for document/signature forgery queries) to output highly relevant statutes.
+    4. **Deterministic Domain Reranker:** Runs targeted legal guardrails (e.g. demoting counterfeit coins/stamps for document/signature forgery queries) to prioritize direct statutes.
     """)
     
     st.markdown("### 📊 Performance & Evaluation Dashboard")
     st.markdown("""
-    | Metric | v1 (Naive Vector RAG) | v2 (Hybrid Search - Current) | Change |
+    | Metric | v1 (Naive Linear Scan) | v2.1 (Hybrid Search - Current) | Impact |
     | :--- | :--- | :--- | :--- |
-    | **Search Engine** | Dense Vector (Linear JSON scan) | Hybrid (SQLite FTS5 + Dense Vector + RRF + Reranker) | Major retrieval precision upgrade |
-    | **Avg. Query Latency** | `466 ms` | `12 ms` | **97.4% speedup** |
-    | **Memory Cache Footprint** | `~320 MB` | `~48 MB` | **85.0% RAM savings** |
-    | **Duplicate Citations** | Present (up to 40% overlaps) | Deduplicated (0% overlaps) | Verified |
-    | **Top-5 Retrieval Precision** | ~68% | ~91% | **+23% precision gain** |
+    | **Search Engine** | Dense Vector (Linear JSON scan) | SQLite FTS5 + Dense Vector + RRF + Reranker | Hybrid retrieval upgrade |
+    | **Median Query Latency** | `~161 ms` | `~7.8 ms` | **~20× lower latency** |
+    | **Active JavaScript Heap** | `~438 MB` (JSON Object Tree) | `~16 MB` | **~96% active heap reduction** |
+    | **Process Resident Memory (RSS)** | `~507 MB RSS` | `~218 MB RSS` | **~57% process RSS reduction** |
+    | **Raw Vector Storage (RAM)** | N/A | `7.17 MB` | Compact Float32Array cache |
+    | **Top-5 Hit Rate (10Q Set)** | 60% (Dense only) | 90% (Hybrid / Full Pipeline) | **+30 percentage points** |
     
-    *Latency is based on 100 benchmark queries. Memory is process-level heap size at startup. Precision is evaluated on top-5 target matches using a manually verified benchmark dataset of 100 queries.*
+    *Evaluated on a controlled 10-query representative domain benchmark across 4,892 statutory sections (run via `npm run benchmark` on an AMD Ryzen 5 5600H, Node.js v22.x, `better-sqlite3` v12.11 in WAL mode).*
     """)
 
 # === FOOTER ===
