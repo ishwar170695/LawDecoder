@@ -152,17 +152,11 @@ GEMINI_MODEL=gemini-3.5-flash
 OPENROUTER_API_KEY1=your_openrouter_key
 ```
 
-**Start backend:**
-```bash
-node server.js
-```
-The server will automatically detect and compile the SQLite database (`backend/data/laws.db`) and vector representations from your raw data in `backend/data/` on the first boot.
-
-**Run benchmark harness locally:**
+**Benchmark & Ablation Harness:**
 ```bash
 npm run benchmark
 ```
-*(Note: Running the benchmark harness tests latency, memory allocations, and component ablation across the 10 representative benchmark queries. It requires `backend/data/laws.db` and `backend/data/parsed_laws_vectors.json`, which are generated when the backend initializes on first boot).*
+*(Note: The standalone benchmark harness tests latency, memory allocations, and component ablation across the 10 representative domain queries against the compiled `laws.db` and `parsed_laws_vectors.json` datasets from the author's local run).*
 
 ### 3️⃣ Frontend (Streamlit UI)
 **Install dependencies:**
